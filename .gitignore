@@ -1,0 +1,15 @@
+# Segredos
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+*.egg-info/
+
+# Histórico local de conversas
+.sessions/
+
+# macOS
+.DS_Store
