@@ -15,7 +15,7 @@ Clave: O Takamine GD20 Dreadnought Natural está disponível por R$ 2.199,00.
 ```
 
 > **Language note:** the store and its customers are Brazilian, so the agent talks to customers in Portuguese,
-> and the source data, tool names and example transcripts are in Portuguese as well. Documentation is in English.
+> and the source data, tool names, code comments, commit messages and example transcripts are in Portuguese as well.
 
 **Highlights**
 
