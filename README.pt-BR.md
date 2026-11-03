@@ -1,6 +1,7 @@
 # 🎸 Clave — agente de atendimento para loja de instrumentos
 
 _[Read in English](README.md)_
+
 Agente conversacional em Python que atende clientes de uma loja de instrumentos musicais (a fictícia **Empório da
 Música**): consulta catálogo, preços, promoções, pagamento e pedidos, aplica as políticas da loja e encaminha para a
 equipe humana o que exige ação.
