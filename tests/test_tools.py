@@ -111,3 +111,10 @@ def test_run_tool_nunca_lanca_excecao(store):
 def test_schemas_validos(store):
     names = {s["function"]["name"] for s in T.tool_schemas(store)}
     assert names == set(T.TOOL_FUNCTIONS)
+
+
+def test_card_de_produto_traz_parcelamento_calculado(store):
+    # Regressão: o modelo chegou a inventar "10x de R$ 79,90" para este produto,
+    # mas de 7x a 12x a parcela mínima é R$ 100 (máximo possível: 7x).
+    card = T.detalhes_produto(store, "Shelby SGD-195E")
+    assert card["parcelamento_maximo"] == "7x de R$ 114,14 sem juros"  # 8x daria R$ 99,88

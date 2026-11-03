@@ -83,6 +83,10 @@ def _price_info(store: Store, p: Product) -> dict:
         }
     else:
         info["preco_pix"] = _brl(p.price * (1 - PIX_DISCOUNT)) + " (5% off no PIX)"
+    # Parcelamento já calculado: o modelo não precisa (nem deve) fazer a conta.
+    final = _final_price(store, p)
+    n = _max_installments(final)
+    info["parcelamento_maximo"] = f"{n}x de {_brl(final / n)} sem juros" if n > 1 else "somente à vista"
     return info
 
 
@@ -344,6 +348,15 @@ def _min_installment(n: int) -> float:
     return 100.0
 
 
+def _max_installments(valor: float) -> int:
+    """Maior número de parcelas sem juros que respeita a parcela mínima da faixa."""
+    max_n = 1
+    for n in range(2, 13):
+        if valor / n >= _min_installment(n):
+            max_n = n
+    return max_n
+
+
 def calcular_pagamento(store: Store, valor: float | None = None, produto_id: int | None = None) -> dict:
     promotional = False
     if produto_id is not None:
@@ -355,10 +368,7 @@ def calcular_pagamento(store: Store, valor: float | None = None, produto_id: int
     if not valor or valor <= 0:
         return {"erro": "Informe um valor ou um produto."}
 
-    max_n = 1
-    for n in range(2, 13):
-        if valor / n >= _min_installment(n):
-            max_n = n
+    max_n = _max_installments(valor)
     options = {f"{n}x": _brl(valor / n) for n in sorted({1, 2, 3, 6, 10, 12, max_n}) if n <= max_n}
 
     return {
