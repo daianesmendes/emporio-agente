@@ -118,3 +118,15 @@ def test_card_de_produto_traz_parcelamento_calculado(store):
     # mas de 7x a 12x a parcela mínima é R$ 100 (máximo possível: 7x).
     card = T.detalhes_produto(store, "Shelby SGD-195E")
     assert card["parcelamento_maximo"] == "7x de R$ 114,14 sem juros"  # 8x daria R$ 99,88
+
+
+def test_encaminhamento_novo_e_atualizacao(store, tmp_path, monkeypatch):
+    monkeypatch.setattr(T, "HANDOFF_FILE", tmp_path / "casos.jsonl")
+    novo = T.encaminhar_para_humano(store, "garantia", "traste solto", "Letícia")
+    assert novo["protocolo"] == "EM-20260325-0001"
+    upd = T.encaminhar_para_humano(store, "garantia", "telefone informado", "(67) 99789-0123",
+                                   protocolo=novo["protocolo"])
+    assert upd["protocolo"] == novo["protocolo"] and "atualizado" in upd["mensagem"]
+    # Atualização não consome número de protocolo; protocolo inventado é recusado.
+    assert T.encaminhar_para_humano(store, "outro", "x")["protocolo"] == "EM-20260325-0002"
+    assert "erro" in T.encaminhar_para_humano(store, "outro", "x", protocolo="EM-1")

@@ -389,21 +389,30 @@ def consultar_politicas(store: Store, topico: str) -> dict:
     return {"topico": topico, "conteudo": get_policy(topico)}
 
 
-def encaminhar_para_humano(store: Store, motivo: str, resumo: str, contato: str | None = None) -> dict:
+def encaminhar_para_humano(
+    store: Store, motivo: str, resumo: str, contato: str | None = None, protocolo: str | None = None,
+) -> dict:
     now = config.now()
     HANDOFF_FILE.parent.mkdir(exist_ok=True)
-    seq = sum(1 for _ in open(HANDOFF_FILE, encoding="utf-8")) + 1 if HANDOFF_FILE.exists() else 1
-    protocol = f"EM-{now:%Y%m%d}-{seq:04d}"
+    existing = []
+    if HANDOFF_FILE.exists():
+        existing = [json.loads(line)["protocolo"] for line in open(HANDOFF_FILE, encoding="utf-8") if line.strip()]
+
+    if protocolo:
+        # Complemento de um caso já aberto (ex.: o cliente informou o telefone depois).
+        if protocolo not in existing:
+            return {"erro": f"Protocolo {protocolo} não encontrado. Para um caso novo, chame sem protocolo."}
+        protocol, action = protocolo, "Caso atualizado com as novas informações."
+    else:
+        protocol = f"EM-{now:%Y%m%d}-{len(set(existing)) + 1:04d}"
+        action = "Registrado e encaminhado para a equipe responsável."
+
     with open(HANDOFF_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps({
             "protocolo": protocol, "registrado_em": now.isoformat(timespec="minutes"),
             "motivo": motivo, "resumo": resumo, "contato": contato,
         }, ensure_ascii=False) + "\n")
-    return {
-        "protocolo": protocol,
-        "prazo_de_retorno": "até 24 horas úteis",
-        "mensagem": "Registrado e encaminhado para a equipe responsável.",
-    }
+    return {"protocolo": protocol, "prazo_de_retorno": "até 24 horas úteis", "mensagem": action}
 
 
 # ----------------------------------------------------------------------
@@ -466,12 +475,15 @@ def tool_schemas(store: Store) -> list[dict]:
            ["topico"]),
         fn("encaminhar_para_humano",
            "Registra o caso para a equipe humana e gera protocolo. Use para reclamações, pedidos de "
-           "cancelamento/devolução a efetivar, garantia, ou quando o cliente pedir um atendente.",
+           "cancelamento/devolução a efetivar, garantia, ou quando o cliente pedir um atendente. "
+           "Para acrescentar informação a um caso já aberto (ex.: telefone informado depois), "
+           "chame de novo passando o protocolo.",
            {
                "motivo": {"type": "string", "enum": ["reclamacao", "devolucao_ou_troca", "cancelamento",
                                                       "garantia", "pedido_atrasado", "outro"]},
                "resumo": {"type": "string", "description": "Resumo objetivo do caso para a equipe."},
                "contato": {"type": "string", "description": "Nome e telefone/e-mail do cliente, se informado."},
+               "protocolo": {"type": "string", "description": "Só para atualizar um caso existente."},
            },
            ["motivo", "resumo"]),
     ]

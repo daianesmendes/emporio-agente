@@ -52,7 +52,14 @@ CURATION_NOTES = {
     ),
     "trocas_e_devolucoes": (
         "Use a ferramenta consultar_pedido para saber a data do pedido/entrega e calcular os prazos. "
-        "O sistema não guarda a data real de recebimento; usamos a previsão de entrega como referência."
+        "O sistema não guarda a data real de recebimento; usamos a previsão de entrega como referência. "
+        "Defeito: até 30 dias da compra, troca direta na loja (4.2). Depois disso, a seção 4.2 manda acionar "
+        "o fabricante, mas a seção 8.1 garante 90 dias de garantia legal (CDC) a partir do recebimento: "
+        "dentro dos 90 dias, informe que o produto está na garantia legal e encaminhe o caso para a equipe "
+        "da loja avaliar; depois dos 90 dias, vale a garantia do fabricante, com intermediação da loja."
+    ),
+    "garantia": (
+        "Para casos de defeito, cruze com consultar_pedido (prazos) e com o tópico trocas_e_devolucoes."
     ),
 }
 
