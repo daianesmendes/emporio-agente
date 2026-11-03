@@ -1,159 +1,165 @@
-# 🎸 Clave — agente de atendimento para loja de instrumentos
+# 🎸 Clave — customer service agent for a musical instrument store
 
-Agente conversacional em Python que atende clientes de uma loja de instrumentos musicais (a fictícia **Empório da
-Música**): consulta catálogo, preços, promoções, pagamento e pedidos, aplica as políticas da loja e encaminha para a
-equipe humana o que exige ação.
+_[Leia em português](README.pt-BR.md)_
+
+A conversational agent in Python that serves customers of a musical instrument store (the fictional **Empório da
+Música**, in Campo Grande, Brazil). It looks up the catalog, prices, promotions, payment options and orders, applies
+the store's policies, and hands off to the human team whatever requires action.
 
 ```
-Você: Quanto custa o Takamine GD20?
+You:   Quanto custa o Takamine GD20?          (How much is the Takamine GD20?)
   ⚙ detalhes_produto({"produto": "Takamine GD20"})
   ⚙ calcular_pagamento({"produto_id": 95})
 Clave: O Takamine GD20 Dreadnought Natural está disponível por R$ 2.199,00.
        No PIX sai por R$ 2.089,05 (5% off) ou em até 12x de R$ 183,25 sem juros. [...]
 ```
 
-**Destaques**
+> **Language note:** the store and its customers are Brazilian, so the agent talks to customers in Portuguese,
+> and the source data, tool names and example transcripts are in Portuguese as well. Documentation is in English.
 
-- **Function calling** sobre dados estruturados (CSVs) e um manual de políticas em PDF — o modelo decide *o que* consultar; preço, parcelas e prazos são calculados em código.
-- **Proteção de dados:** pedidos só são exibidos com o e-mail ou telefone do dono.
-- **Fallback entre modelos e provedores** (Gemini → Groq) para operar no plano gratuito sem interromper o atendimento.
-- **Checagem automática de qualidade dos dados**, que encontrou 14 inconsistências na base.
-- **29 testes** que rodam sem chamar o LLM.
+**Highlights**
+
+- **Function calling** over structured data (CSVs) and a PDF policy manual — the model decides *what* to look up; prices, installments and deadlines are computed in code.
+- **Data protection:** order details are only shown when the owner's e-mail or phone number is provided.
+- **Fallback across models and providers** (Gemini → Groq) to run on free tiers without interrupting the conversation.
+- **Automated data quality checks**, which found 14 inconsistencies in the dataset.
+- **29 tests** that run without calling the LLM.
 
 ---
 
-## Como rodar
+## How to run
 
-Requer Python 3.11+ e uma chave gratuita do [Google AI Studio](https://aistudio.google.com) (opcional: uma do
-[Groq](https://console.groq.com/keys) como reserva).
+Requires Python 3.11+ and a free API key from [Google AI Studio](https://aistudio.google.com) (optional: a
+[Groq](https://console.groq.com/keys) key as a backup provider).
 
 ```bash
 git clone https://github.com/daianesmendes/emporio-agente.git
 cd emporio-agente
-cp .env.example .env      # cole a chave em LLM_API_KEY (e, se quiser, em LLM_FALLBACK_API_KEY)
-uv sync                   # ou: python -m venv .venv && source .venv/bin/activate && pip install -e .
+cp .env.example .env      # paste the key into LLM_API_KEY (and optionally LLM_FALLBACK_API_KEY)
+uv sync                   # or: python -m venv .venv && source .venv/bin/activate && pip install -e .
 uv run emporio --debug
 ```
 
-| Comando | O que faz |
+| Command | What it does |
 |---|---|
-| `emporio` | Conversa no terminal (`/novo` reinicia, `/sair` encerra) |
-| `emporio --debug` | Mostra as ferramentas chamadas e o modelo que respondeu |
-| `emporio --sessao nome` | Salva e retoma o histórico da conversa |
-| `emporio --roteiro arquivo.txt -o saida.md` | Executa uma conversa roteirizada e grava a transcrição |
-| `pytest` | Roda os testes |
+| `emporio` | Chat in the terminal (`/novo` restarts, `/sair` exits) |
+| `emporio --debug` | Shows which tools were called and which model answered |
+| `emporio --sessao name` | Saves and resumes the conversation history |
+| `emporio --roteiro file.txt -o out.md` | Runs a scripted conversation and saves the transcript |
+| `pytest` | Runs the tests |
 
-As demais opções (modelos, provedor de reserva, data de referência) estão comentadas no [`.env.example`](.env.example).
-
----
-
-## Exemplos
-
-Transcrições geradas executando o agente (`emporio --roteiro`), com as ferramentas consultadas em cada resposta:
-
-1. [Violões até R$ 1.000, indicação para iniciante e parcelamento](examples/01_catalogo_e_pagamento.md) — busca com filtros e contexto entre mensagens
-2. [Promoção encerrada e produto esgotado](examples/02_promocao_expirada_e_esgotado.md) — transparência e alternativas
-3. [Arrependimento de compra que vira defeito](examples/03_devolucao_lgpd_e_garantia.md) — verificação de identidade, prazos, garantia e protocolo
-4. [Loja fechada, acessórios, saxofone, lição de casa e "me dá 50%"](examples/04_informacoes_e_fora_do_escopo.md) — escopo e tentativa de manipulação
-5. [Pedido atrasado](examples/05_pedido_atrasado_reclamacao.md) — detecção de atraso, empatia e encaminhamento
+Other settings (models, backup provider, reference date) are documented in [`.env.example`](.env.example).
 
 ---
 
-## Arquitetura
+## Examples
+
+Transcripts generated by running the agent (`emporio --roteiro`), showing the tools consulted for each answer:
+
+1. [Acoustic guitars under R$ 1,000, a recommendation for a beginner, and installments](examples/01_catalogo_e_pagamento.md) — filtered search and context across messages
+2. [Expired promotion and out-of-stock product](examples/02_promocao_expirada_e_esgotado.md) — transparency and alternatives
+3. [Buyer's remorse that turns into a defect claim](examples/03_devolucao_lgpd_e_garantia.md) — identity check, deadlines, warranty and ticket number
+4. [Store closed, accessories, saxophone, homework and "give me 50% off"](examples/04_informacoes_e_fora_do_escopo.md) — scope handling and a manipulation attempt
+5. [Late delivery](examples/05_pedido_atrasado_reclamacao.md) — delay detection, empathy and hand-off
+
+---
+
+## Architecture
 
 ```mermaid
 flowchart LR
-    U([Cliente]) <--> CLI[cli.py]
-    CLI <--> A[agent.py<br/>loop do agente]
-    A --> P[prompts.py<br/>persona · horário · catálogo]
+    U([Customer]) <--> CLI[cli.py]
+    CLI <--> A[agent.py<br/>agent loop]
+    A --> P[prompts.py<br/>persona · hours · catalog]
     A <--> L[llm.py<br/>fallback]
     L <--> G[(Gemini)]
-    L <-.reserva.-> GQ[(Groq)]
-    A --> T[tools.py<br/>6 ferramentas]
+    L <-.backup.-> GQ[(Groq)]
+    A --> T[tools.py<br/>6 tools]
     T --> S[data.py] --> CSV[(CSVs)]
-    T --> PO[policies.py] --> PDF[(manual PDF)]
+    T --> PO[policies.py] --> PDF[(policy PDF)]
 ```
 
-A cada mensagem, o agente monta o prompt, o LLM escolhe ferramentas, o Python as executa e devolve o resultado, até a
-resposta final (máximo de 4 rodadas).
+For each message, the agent builds the prompt, the LLM picks tools, Python runs them and returns the results, until
+the final answer (at most 4 rounds).
 
-| Ferramenta | Função |
+| Tool | Purpose |
 |---|---|
-| `buscar_produtos` | Busca por termo, categoria e faixa de preço, tolerante a acento e plural |
-| `detalhes_produto` | Ficha do produto; sugere alternativas se estiver esgotado ou descontinuado |
-| `consultar_pedido` | Status, rastreio e prazos de troca/garantia — exige o contato do dono |
-| `calcular_pagamento` | PIX, débito, boleto e parcelamento conforme as regras da loja |
-| `consultar_politicas` | Devolve a seção pedida do manual |
-| `encaminhar_para_humano` | Abre ou complementa um caso para a equipe, com protocolo |
+| `buscar_produtos` | Search by keyword, category and price range; tolerant to accents and plurals |
+| `detalhes_produto` | Product details; suggests alternatives when out of stock or discontinued |
+| `consultar_pedido` | Order status, tracking and return/warranty deadlines — requires the owner's contact |
+| `calcular_pagamento` | PIX, debit, bank slip and installments according to the store's rules |
+| `consultar_politicas` | Returns the requested section of the policy manual |
+| `encaminhar_para_humano` | Opens or updates a case for the human team, with a ticket number |
 
 ---
 
-## Decisões técnicas
+## Technical decisions
 
-**Ferramentas em vez de RAG vetorial ou agente de SQL.** Dados estruturados ficam atrás de ferramentas com parâmetros
-fechados: o LLM nunca lembra um preço nem faz conta, e a regra de privacidade fica no código, não no prompt. O manual
-(~11 mil caracteres, 10 seções) é servido por seção via um `enum` de tópicos — determinístico e sem risco de um chunk
-cortar uma tabela. Com dezenas de documentos, eu passaria para busca híbrida com reranking.
+**Tools instead of vector RAG or a SQL agent.** Structured data sits behind tools with fixed parameters: the LLM never
+recalls a price or does math, and the privacy rule lives in code, not in the prompt. The manual (~11k characters,
+10 sections) is served by section through an `enum` of topics — deterministic, with no risk of a chunk splitting a
+table. With dozens of documents, I would move to hybrid search with reranking.
 
-**Sem framework de agentes.** O loop tem ~60 linhas e deixa visíveis o teto de rodadas, o corte de histórico e o
-tratamento de erro. LangGraph faria sentido com fluxos longos e com estado (ex.: concluir uma troca de ponta a ponta).
+**No agent framework.** The loop is ~60 lines and keeps the round limit, history trimming and error handling visible.
+LangGraph would make sense for long, stateful flows (e.g. completing a product exchange end to end).
 
-**Agnóstico de provedor, com fallback medido.** O cliente usa a API compatível com OpenAI (Gemini, Groq, OpenAI, Ollama).
-Quando um modelo devolve 429, 503 ou passa de 30 s, ele entra em espera e o próximo assume; esgotado o Gemini, entra o
-Groq, recebendo só os campos padrão do histórico. A ordem dos modelos veio de medição, não do número da versão: o mais
-novo estava sobrecarregado e levava mais de 2 min, enquanto o escolhido responde em ~4 s.
+**Provider-agnostic, with measured fallback.** The client uses the OpenAI-compatible API (Gemini, Groq, OpenAI,
+Ollama). When a model returns 429, 503 or takes over 30 s, it is put on cooldown and the next one takes over; once
+Gemini is exhausted, Groq takes over and receives only the standard message fields. The model order came from measurement,
+not version numbers: the newest model was overloaded and took over 2 minutes, while the chosen one answers in ~4 s.
 
-**Prompt dinâmico e enxuto.** É reconstruído a cada mensagem com a hora atual (loja aberta ou fechada), um resumo do
-catálogo gerado dos dados e as informações mais pedidas (endereço, horário, frete local), que assim saem com uma
-chamada só. Os procedimentos de atendimento são lidos do próprio PDF, que é a fonte única. Tom definido pelo manual: informal, mas profissional.
+**Dynamic, lean prompt.** It is rebuilt on every message with the current time (store open or closed), a catalog
+summary generated from the data, and the most requested information (address, hours, local shipping), so those
+questions take a single call. Service procedures are read from the PDF itself, the single source of truth. The tone
+follows the manual: informal but professional.
 
-**Histórico persistido por sessão** em JSON e cortado nas mensagens mais recentes, sem separar uma chamada de
-ferramenta do seu resultado.
+**Per-session history** persisted as JSON and trimmed to the most recent messages, without separating a tool call from
+its result.
 
 ---
 
-## Qualidade dos dados
+## Data quality
 
-Os arquivos originais ficam intactos em `data/raw/` e a limpeza é feita em código. Ao carregar, o sistema verifica:
+The original files stay untouched in `data/raw/`, and all cleaning happens in code. On load, the system checks for:
 
-| Inconsistência | Tratamento |
+| Inconsistency | Handling |
 |---|---|
-| 6 produtos cuja descrição cita outra marca | O agente usa nome, preço e especificações, sem repetir a descrição |
-| 3 categorias sem produto (sopro, cordas orquestrais) | O agente informa que não há, sem inventar modelos |
-| 2 pedidos com total diferente da soma dos itens | Vale o total registrado no pedido |
-| Produto "em breve" presente em pedidos já feitos | Registrado como inconsistência do cadastro |
-| Produto ativo com estoque zero | Tratado como esgotado, com alternativas |
+| 6 products whose description names a different brand | The agent uses name, price and specs, without repeating the description |
+| 3 categories with no products (woodwinds, brass, orchestral strings) | The agent says so, without inventing models |
+| 2 orders whose total differs from the sum of their items | The total recorded on the order prevails |
+| A "coming soon" product present in past orders | Logged as a catalog inconsistency |
+| An active product with zero stock | Treated as out of stock, with alternatives |
 
-O manual também tem contradições (dois telefones, regras de parcelamento divergentes, garantia de 30 × 90 dias). Cada
-decisão está documentada em `CURATION_NOTES` ([`policies.py`](src/emporio/policies.py)) e é entregue ao modelo junto
-com a seção do manual.
-
----
-
-## Validação
-
-Os testes cobrem ferramentas, regras e o loop do agente com um LLM simulado. As respostas do modelo foram revisadas
-número a número contra os dados, e isso revelou quatro alucinações: um parcelamento abaixo da parcela mínima, uma
-exigência inexistente no manual, um elogio sem fonte e uma ação declarada sem ter sido executada. As correções foram,
-de preferência, estruturais: cada produto já traz o parcelamento calculado, e há uma ferramenta para complementar um caso
-aberto. As conversas afetadas foram regeradas.
+The manual also contradicts itself (two phone numbers, conflicting installment rules, 30- vs 90-day warranty). Each
+decision is documented in `CURATION_NOTES` ([`policies.py`](src/emporio/policies.py)) and delivered to the model along
+with the manual section.
 
 ---
 
-## Suposições, limitações e próximos passos
+## Validation
 
-- **Data de referência:** os pedidos vão até março de 2026, então o agente usa `AGENT_NOW=2026-03-25 14:00` para os prazos fazerem sentido. Como não existe data de recebimento no sistema, a previsão de entrega serve de referência.
-- **Limitações:** a cota e a latência do plano gratuito variam; a busca é por palavra-chave, não semântica; o frete
-  para outras cidades não é calculado; os casos ficam num arquivo local; e a verificação por e-mail ou telefone é fraca para produção.
-- **Próximos passos:** avaliação automatizada com um conjunto amplo de perguntas e LLM-as-judge; tracing (Langfuse ou
-  OpenTelemetry); API com webhook de WhatsApp e verificação por OTP; Postgres no lugar dos CSVs; busca semântica no catálogo.
+Tests cover tools, business rules and the agent loop with a mocked LLM. The model's answers were also reviewed number
+by number against the data, which revealed four hallucinations: an installment plan below the minimum, a requirement
+that does not exist in the manual, an unsourced claim about a product, and an action stated without being executed.
+Fixes were structural where possible — each product now carries its precomputed installment plan, and a tool can update
+an open case. The affected conversations were regenerated.
 
 ---
 
-## Uso de IA no desenvolvimento
+## Assumptions, limitations and next steps
 
-Desenvolvido com o **Claude Code** como par de programação: análise inicial dos dados, discussão das decisões de
-arquitetura, implementação incremental com testes e revisão das conversas geradas. As decisões e a validação final
-foram minhas; os commits coassinados registram essa colaboração.
+- **Reference date:** orders go up to March 2026, so the agent uses `AGENT_NOW=2026-03-25 14:00` for deadlines to make sense. Since the system has no delivery-received date, the estimated delivery date is used instead.
+- **Limitations:** free-tier quotas and latency vary; search is keyword-based, not semantic; shipping to other cities
+  is not calculated; cases are stored in a local file; and e-mail/phone verification is weak for production.
+- **Next steps:** automated evaluation with a broad question set and LLM-as-judge; tracing (Langfuse or OpenTelemetry);
+  an API with a WhatsApp webhook and OTP verification; Postgres instead of CSVs; semantic search over the catalog.
 
-<sub>Projeto criado como desafio técnico de AI Engineering. Dados e loja fictícios.</sub>
+---
+
+## Use of AI in development
+
+Built with **Claude Code** as a pair programmer: initial data analysis, discussion of architecture decisions,
+incremental implementation with tests, and review of the generated conversations. The decisions and final validation
+were mine; the co-authored commits record this collaboration.
+
+<sub>Project created as an AI Engineering technical challenge. Store and data are fictional.</sub>

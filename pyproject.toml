@@ -1,7 +1,7 @@
 [project]
 name = "emporio-agente"
 version = "0.1.0"
-description = "Agente de atendimento da Empório da Música (desafio técnico AI Engineer)"
+description = "Customer service agent for a musical instrument store (AI Engineering technical challenge)"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
