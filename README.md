@@ -20,10 +20,12 @@ Clave: O Takamine GD20 Dreadnought Natural está disponível por R$ 2.199,00.
 
 ## Como rodar
 
-**Pré-requisitos:** Python 3.11+ e uma chave de API gratuita do Google Gemini.
+**Pré-requisitos:** Python 3.11+ e uma chave de API gratuita do Google Gemini
+(opcional: uma chave gratuita do Groq como provedor de reserva).
 
 1. **Crie a chave** em [aistudio.google.com](https://aistudio.google.com) → *Get API key* → *Create API key*
-   (plano gratuito, sem cartão).
+   (plano gratuito, sem cartão). *Opcional:* crie também uma em [console.groq.com](https://console.groq.com/keys)
+   e cole em `LLM_FALLBACK_API_KEY` — o agente passa a usá-la quando a cota do Gemini acaba.
 
 2. **Instale e configure:**
 
@@ -56,7 +58,7 @@ Clave: O Takamine GD20 Dreadnought Natural está disponível por R$ 2.199,00.
 | `emporio --debug` | Mostra quais ferramentas o agente chamou e qual modelo respondeu |
 | `emporio --sessao maria` | Salva o histórico e retoma a conversa depois |
 | `emporio --roteiro examples/roteiros/01_catalogo_e_pagamento.txt -o saida.md` | Roda uma conversa pré-escrita e grava a transcrição |
-| `pytest` | 27 testes (ferramentas, dados, loop do agente e fallback) — **não gastam cota de API** |
+| `pytest` | 29 testes (ferramentas, dados, loop do agente e fallback) — **não gastam cota de API** |
 
 ### Configuração (`.env`)
 
@@ -66,6 +68,8 @@ Clave: O Takamine GD20 Dreadnought Natural está disponível por R$ 2.199,00.
 | `LLM_API_KEY` | — | Chave do provedor |
 | `LLM_MODELS` | 5 modelos Gemini gratuitos | Ordem de preferência para o fallback |
 | `LLM_REASONING_EFFORT` | `low` | Nível de raciocínio; deixe vazio em provedores que não aceitam |
+| `LLM_FALLBACK_BASE_URL` / `_API_KEY` / `_MODELS` | Groq, sem chave | Provedor de reserva (opcional); ignorado se a chave estiver vazia |
+| `LLM_FALLBACK_REASONING_EFFORT` | vazio | Nível de raciocínio do provedor de reserva |
 | `AGENT_NOW` | `2026-03-25 14:00` | "Agora" do agente (ver [Suposições](#suposições)); vazio = relógio real |
 
 ---
@@ -83,6 +87,10 @@ Cada uma mostra, num bloco recolhível, as ferramentas que o agente decidiu cham
 | 4 | [Endereço num sábado à tarde, acessórios, saxofone, lição de matemática, "me dá 50%"](examples/04_informacoes_e_fora_do_escopo.md) | Loja fechada, fora do escopo, categoria sem produtos, **tentativa de manipulação** |
 | 5 | [Meu pedido não chegou!](examples/05_pedido_atrasado_reclamacao.md) | Detecção de **entrega atrasada**, empatia e encaminhamento |
 
+Cada resposta indica o modelo que a produziu. Elas variam de propósito: as conversas foram geradas no plano gratuito, e o
+fallback trocou de modelo quando a cota acabava — na conversa 3, a última resposta veio do **Groq** (`qwen/qwen3.8-27b`)
+porque todos os modelos do Gemini estavam indisponíveis naquele momento, no meio da conversa.
+
 ---
 
 ## Arquitetura
@@ -93,7 +101,8 @@ flowchart LR
     CLI <--> A[Agente<br/>agent.py]
     A -- prompt dinâmico --> P[prompts.py<br/>persona · agora · catálogo<br/>procedimentos do manual]
     A <--> L[LLMClient<br/>llm.py]
-    L <-- fallback 429/503/timeout --> G[(Gemini<br/>5 modelos)]
+    L <-- 1º: fallback entre modelos --> G[(Gemini<br/>5 modelos)]
+    L <-- 2º: provedor de reserva --> GQ[(Groq<br/>2 modelos)]
     A -- tool calls --> T[Ferramentas<br/>tools.py]
     T --> S[Store<br/>data.py]
     T --> PO[Políticas<br/>policies.py]
@@ -112,7 +121,7 @@ resposta final (no máximo 4 rodadas, para proteger a cota).
 | `src/emporio/policies.py` | Extrai o PDF e divide o manual por seção; notas de curadoria |
 | `src/emporio/tools.py` | As 6 ferramentas e seus esquemas JSON |
 | `src/emporio/prompts.py` | Prompt de sistema (persona, regras, loja aberta/fechada) |
-| `src/emporio/llm.py` | Cliente OpenAI-compatível com fallback entre modelos |
+| `src/emporio/llm.py` | Cliente OpenAI-compatível com fallback entre modelos e provedores |
 | `src/emporio/agent.py` | Loop do agente e persistência do histórico |
 | `src/emporio/cli.py` | Interface de terminal e execução de roteiros |
 
@@ -125,7 +134,7 @@ resposta final (no máximo 4 rodadas, para proteger a cota).
 | `consultar_pedido` | Status, rastreio, devolução | **Exige e-mail ou telefone do dono**; calcula prazos de arrependimento, troca e garantia |
 | `calcular_pagamento` | Parcelas, PIX | Aplica parcela mínima por faixa e a regra "PIX não acumula com promoção" |
 | `consultar_politicas` | Regras da loja | Devolve a seção inteira do manual + nota de curadoria |
-| `encaminhar_para_humano` | Reclamação, devolução a efetivar, garantia, pedido de atendente | Gera protocolo e informa o prazo de 24h úteis |
+| `encaminhar_para_humano` | Reclamação, devolução a efetivar, garantia, pedido de atendente | Gera protocolo e informa o prazo de 24h úteis; com o protocolo, complementa um caso já aberto |
 
 ---
 
@@ -177,6 +186,11 @@ fluxos de várias etapas com estado (ex.: abrir uma troca de ponta a ponta), mú
 
   Em atendimento, latência e confiabilidade valem mais que usar o modelo mais recente: a mensagem de teste caiu de
   mais de 2 minutos para ~4 s.
+- **Provedor de reserva (Groq):** gerando os exemplos, a cota diária dos modelos Flash acabou. Em vez de depender de
+  um provedor só, o cliente aceita uma lista de provedores: esgotados os modelos do Gemini, tenta `openai/gpt-oss-120b`
+  e `qwen/qwen3.8-27b` no Groq (também gratuito; ~2 s por resposta no mesmo teste). Dois cuidados:
+  o histórico enviado a outro provedor é reduzido aos campos padrão (o Gemini inclui assinaturas de raciocínio que
+  outros provedores rejeitam), e um erro 400 também passa para o próximo modelo em vez de derrubar o atendimento.
 - **`reasoning_effort=low` e `temperature=0.3`:** o raciocínio difícil (filtrar, calcular, checar prazo) está nas
   ferramentas; o modelo só precisa escolher a ferramenta certa e redigir bem.
 
@@ -218,9 +232,25 @@ expor via API (FastAPI) ou webhook de WhatsApp é trocar só a camada de interfa
 
 ### 8. Testes
 
-27 testes com `pytest`, todos **sem chamar o LLM**: ferramentas (cada armadilha dos dados vira um teste), divisão do manual,
-loop do agente com um LLM simulado (chamada de ferramenta → resposta, teto de rodadas, persistência) e o fallback de modelos.
-Isso permitiu iterar rápido sem gastar a cota diária.
+29 testes com `pytest`, todos **sem chamar o LLM**: ferramentas (cada armadilha dos dados vira um teste), divisão do manual,
+loop do agente com um LLM simulado (chamada de ferramenta → resposta, teto de rodadas, persistência) e o fallback de
+modelos e de provedores. Isso permitiu iterar rápido sem gastar a cota diária.
+
+### 9. Validação: revisando as conversas e corrigindo pela estrutura
+
+Os testes garantem as ferramentas, mas não o que o modelo **diz**. Então cada conversa de exemplo foi conferida número a
+número contra os dados e o manual. A primeira rodada encontrou quatro alucinações:
+
+| O que o modelo fez | Por que é grave | Correção |
+|---|---|---|
+| Ofereceu "10x de R$ 79,90" sem chamar ferramenta | Abaixo da parcela mínima de R$ 100 — o manual chama isso de propaganda enganosa | **Estrutural:** todo produto devolvido já traz `parcelamento_maximo` calculado em Python (+ teste de regressão) |
+| Exigiu "nota fiscal" para devolução | Regra que não existe no manual | Prompt: regras só depois de `consultar_politicas`, sem acrescentar exigências |
+| Disse que um modelo é "um dos mais recomendados por professores no mundo" | Afirmação sem fonte | Prompt: sobre produto, só o que veio das ferramentas |
+| Disse "já atualizei seu contato" sem ter chamado ferramenta | Ação inventada | **Estrutural:** `encaminhar_para_humano` aceita protocolo para complementar o caso; prompt proíbe declarar ação não executada |
+
+A preferência foi por correções **estruturais** (dar ao modelo o dado pronto, ou uma ferramenta que faça a ação) em vez
+de só acrescentar proibições no prompt: o modelo erra menos quando não precisa calcular nem improvisar. As conversas
+afetadas foram regeradas e conferidas de novo.
 
 ---
 
@@ -249,6 +279,7 @@ próximo da sequência, porque a lista "1. Saudação, 2. Entendimento..." da se
 | E-mail com acento ("empóriodamusica") × sem acento | Sem acento — domínio com acento é erro de digitação |
 | Crédito com "parcela mínima R$ 100" na tabela × mínimos por faixa na seção 3.1 | A seção 3.1, mais específica, prevalece |
 | "Mais de 300 instrumentos" × 65 no sistema | Só existe o que está no sistema |
+| Defeito após 30 dias: "acionar o fabricante" (4.2) × garantia legal de 90 dias (8.1) | Até 30 dias da compra, troca na loja; até 90 dias do recebimento, garantia legal com a loja; depois, fabricante com intermediação |
 
 ---
 
@@ -272,7 +303,10 @@ próximo da sequência, porque a lista "1. Saudação, 2. Entendimento..." da se
 **Limitações conhecidas**
 
 - **Plano gratuito do Gemini:** cota de 20–50 requisições/dia por modelo e latência variável (de ~2 s a 20 s; o modelo
-  mais novo chegou a ficar indisponível). O fallback mitiga, mas não elimina.
+  mais novo chegou a ficar indisponível). O fallback entre modelos e para o Groq mitiga, mas não elimina.
+- **Qualidade varia com o modelo que responde:** quando o fallback cai num modelo menor, o tom e o nível de detalhe
+  mudam. As regras críticas (preço, parcelas, prazos, LGPD) estão em código e não dependem do modelo.
+- **A revisão das conversas foi manual:** cobre os 5 cenários, não uma bateria ampla (ver "Com mais tempo").
 - **Busca por palavra-chave:** entende acentos, plural, sinônimos de categoria e erros leves, mas não semântica
   ("algo com som mais grave" não vira "barítono").
 - **Frete para outras cidades** depende do CEP e de cotação; o agente explica as modalidades, mas não calcula o valor.
@@ -309,8 +343,9 @@ O fluxo foi:
 4. **Depuração guiada por medição:** quando a primeira chamada real demorou mais de 2 minutos, investigamos com medições
    (rede via `curl`, latência por modelo) até achar a causa (modelo sobrecarregado + retentativas longas), em vez de
    aumentar o timeout no escuro.
-5. **Exemplos gerados pelo próprio agente:** os roteiros em `examples/roteiros/` foram escritos para cobrir os cenários,
-   e as transcrições saíram de execuções reais.
+5. **Exemplos gerados pelo próprio agente e revisados:** os roteiros em `examples/roteiros/` foram escritos para cobrir
+   os cenários, as transcrições saíram de execuções reais, e a revisão delas encontrou as alucinações descritas em
+   [Validação](#9-validação-revisando-as-conversas-e-corrigindo-pela-estrutura), corrigidas antes da entrega.
 
 O que eu fiz: definir prioridades e restrições (prazo, conta disponível, critérios de avaliação), validar as decisões,
 testar o agente na prática e revisar o resultado.
