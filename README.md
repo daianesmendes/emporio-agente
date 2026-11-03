@@ -56,7 +56,7 @@ Clave: O Takamine GD20 Dreadnought Natural está disponível por R$ 2.199,00.
 | `emporio --debug` | Mostra quais ferramentas o agente chamou e qual modelo respondeu |
 | `emporio --sessao maria` | Salva o histórico e retoma a conversa depois |
 | `emporio --roteiro examples/roteiros/01_catalogo_e_pagamento.txt -o saida.md` | Roda uma conversa pré-escrita e grava a transcrição |
-| `pytest` | 26 testes (ferramentas, dados, loop do agente e fallback) — **não gastam cota de API** |
+| `pytest` | 27 testes (ferramentas, dados, loop do agente e fallback) — **não gastam cota de API** |
 
 ### Configuração (`.env`)
 
@@ -218,7 +218,7 @@ expor via API (FastAPI) ou webhook de WhatsApp é trocar só a camada de interfa
 
 ### 8. Testes
 
-26 testes com `pytest`, todos **sem chamar o LLM**: ferramentas (cada armadilha dos dados vira um teste), divisão do manual,
+27 testes com `pytest`, todos **sem chamar o LLM**: ferramentas (cada armadilha dos dados vira um teste), divisão do manual,
 loop do agente com um LLM simulado (chamada de ferramenta → resposta, teto de rodadas, persistência) e o fallback de modelos.
 Isso permitiu iterar rápido sem gastar a cota diária.
 
