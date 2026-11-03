@@ -93,3 +93,33 @@ def test_fallback_de_modelo_quando_cota_estoura():
     # m1 fica em espera: a próxima chamada já vai direto para m2.
     client.chat([], [])
     assert used == ["m1", "m2", "m2"]
+
+
+def test_fallback_para_provedor_de_reserva_com_historico_limpo():
+    from emporio.config import Provider
+
+    reserva = Provider("reserva", "http://y", "k2", ["r1"])
+    client = LLMClient(Settings(base_url="http://x", api_key="k", models=["m1"], now_override="", fallback=reserva))
+    sent = {}
+
+    def principal(model, **kwargs):
+        err = openai.RateLimitError.__new__(openai.RateLimitError)
+        err.message = "quota"
+        raise err
+
+    def secundario(model, messages, **kwargs):
+        sent["messages"] = messages
+        return SimpleNamespace(choices=[SimpleNamespace(message="ok")])
+
+    client.clients["principal"] = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=principal)))
+    client.clients["reserva"] = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=secundario)))
+
+    historico = [{
+        "role": "assistant", "content": None, "extra_content": {"google": {"thought_signature": "abc"}},
+        "tool_calls": [{"id": "c1", "type": "function", "extra_content": {"x": 1},
+                        "function": {"name": "buscar_produtos", "arguments": "{}"}}],
+    }]
+    assert client.chat(historico, []) == ("ok", "r1")
+    # Campos específicos do Gemini não vão para o outro provedor.
+    msg = sent["messages"][0]
+    assert "extra_content" not in msg and "extra_content" not in msg["tool_calls"][0]
